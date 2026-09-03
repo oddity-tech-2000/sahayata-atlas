@@ -1,0 +1,13 @@
+.git
+.gitignore
+.impeccable
+node_modules
+dist
+.venv
+__pycache__
+.pytest_cache
+.ruff_cache
+coverage
+*.log
+desktop-*.png
+mobile-*.png

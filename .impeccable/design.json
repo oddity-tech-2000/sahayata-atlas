@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-03T06:52:12Z",
+  "title": "Design System: Sahayata Atlas",
+  "extensions": {
+    "colorMeta": {
+      "forest": {"role": "primary", "displayName": "Forest", "canonical": "#283618", "tonalRamp": ["oklch(15% 0.055 122)", "oklch(25% 0.055 122)", "oklch(35% 0.055 122)", "oklch(45% 0.055 122)", "oklch(55% 0.055 122)", "oklch(65% 0.055 122)", "oklch(80% 0.055 122)", "oklch(95% 0.055 122)"]},
+      "olive": {"role": "secondary", "displayName": "Olive", "canonical": "#606c38", "tonalRamp": ["oklch(15% 0.079 111)", "oklch(25% 0.079 111)", "oklch(35% 0.079 111)", "oklch(45% 0.079 111)", "oklch(55% 0.079 111)", "oklch(65% 0.079 111)", "oklch(80% 0.079 111)", "oklch(95% 0.079 111)"]},
+      "cream": {"role": "neutral", "displayName": "Cream", "canonical": "#fefae0", "tonalRamp": ["oklch(15% 0.033 96)", "oklch(25% 0.033 96)", "oklch(35% 0.033 96)", "oklch(45% 0.033 96)", "oklch(55% 0.033 96)", "oklch(65% 0.033 96)", "oklch(80% 0.033 96)", "oklch(95% 0.033 96)"]},
+      "sand": {"role": "primary", "displayName": "Sand", "canonical": "#dda15e", "tonalRamp": ["oklch(15% 0.111 68)", "oklch(25% 0.111 68)", "oklch(35% 0.111 68)", "oklch(45% 0.111 68)", "oklch(55% 0.111 68)", "oklch(65% 0.111 68)", "oklch(80% 0.111 68)", "oklch(95% 0.111 68)"]},
+      "ochre": {"role": "secondary", "displayName": "Ochre", "canonical": "#bc6c25", "tonalRamp": ["oklch(15% 0.137 55)", "oklch(25% 0.137 55)", "oklch(35% 0.137 55)", "oklch(45% 0.137 55)", "oklch(55% 0.137 55)", "oklch(65% 0.137 55)", "oklch(80% 0.137 55)", "oklch(95% 0.137 55)"]},
+      "cream-tint": {"role": "neutral", "displayName": "Cream Tint", "canonical": "#f4edcf", "tonalRamp": ["oklch(15% 0.043 94)", "oklch(25% 0.043 94)", "oklch(35% 0.043 94)", "oklch(45% 0.043 94)", "oklch(55% 0.043 94)", "oklch(65% 0.043 94)", "oklch(80% 0.043 94)", "oklch(95% 0.043 94)"]},
+      "signal-white": {"role": "neutral", "displayName": "Pale Cream", "canonical": "#fffdf1", "tonalRamp": ["oklch(15% 0.018 96)", "oklch(25% 0.018 96)", "oklch(35% 0.018 96)", "oklch(45% 0.018 96)", "oklch(55% 0.018 96)", "oklch(65% 0.018 96)", "oklch(80% 0.018 96)", "oklch(95% 0.018 96)"]},
+      "civic-line": {"role": "neutral", "displayName": "Civic Line", "canonical": "#d5c79d", "tonalRamp": ["oklch(15% 0.055 88)", "oklch(25% 0.055 88)", "oklch(35% 0.055 88)", "oklch(45% 0.055 88)", "oklch(55% 0.055 88)", "oklch(65% 0.055 88)", "oklch(80% 0.055 88)", "oklch(95% 0.055 88)"]},
+      "error-ink": {"role": "tertiary", "displayName": "Error Ink", "canonical": "#612e14", "tonalRamp": ["oklch(15% 0.099 48)", "oklch(25% 0.099 48)", "oklch(35% 0.099 48)", "oklch(45% 0.099 48)", "oklch(55% 0.099 48)", "oklch(65% 0.099 48)", "oklch(80% 0.099 48)", "oklch(95% 0.099 48)"]},
+      "error-paper": {"role": "tertiary", "displayName": "Error Paper", "canonical": "#f6ddbd", "tonalRamp": ["oklch(15% 0.060 72)", "oklch(25% 0.060 72)", "oklch(35% 0.060 72)", "oklch(45% 0.060 72)", "oklch(55% 0.060 72)", "oklch(65% 0.060 72)", "oklch(80% 0.060 72)", "oklch(95% 0.060 72)"]},
+      "error-line": {"role": "tertiary", "displayName": "Error Line", "canonical": "#d49b63", "tonalRamp": ["oklch(15% 0.096 67)", "oklch(25% 0.096 67)", "oklch(35% 0.096 67)", "oklch(45% 0.096 67)", "oklch(55% 0.096 67)", "oklch(65% 0.096 67)", "oklch(80% 0.096 67)", "oklch(95% 0.096 67)"]}
+    },
+    "typographyMeta": {
+      "display": {"displayName": "Display", "purpose": "First-view command headlines."},
+      "headline": {"displayName": "Headline", "purpose": "Major explanatory statements."},
+      "title": {"displayName": "Title", "purpose": "Brand, empty-state, and ledger titles."},
+      "body": {"displayName": "Body", "purpose": "Operational instructions and explanations."},
+      "label": {"displayName": "Label", "purpose": "Fields, selectors, metadata, and compact status."}
+    },
+    "shadows": [
+      {"name": "command-lift", "value": "0 15px 34px rgba(20, 29, 10, 0.32)", "purpose": "Lift the city-search control from the Forest command band."},
+      {"name": "workspace-lift", "value": "0 18px 42px rgba(40, 54, 24, 0.18)", "purpose": "Bind the map and ledger into one operative shell."},
+      {"name": "overlay-lift", "value": "0 12px 28px rgba(40, 54, 24, 0.20)", "purpose": "Keep controls legible above map content."},
+      {"name": "detail-lift", "value": "0 8px 22px rgba(40, 54, 24, 0.14)", "purpose": "Separate expanded explanatory content inside the ledger."},
+      {"name": "marker-lift", "value": "0 6px 16px rgba(40, 54, 24, 0.34)", "purpose": "Preserve resource-pin visibility over varied tiles."}
+    ],
+    "motion": [
+      {"name": "command-arrow", "value": "180ms ease-out", "purpose": "Move the primary-action arrow 3px on hover."},
+      {"name": "status-pulse", "value": "1.4s infinite ease-out", "purpose": "Signal searching, geolocation, and selected map state."},
+      {"name": "reduced-motion", "value": "animation: none; transition: none", "purpose": "Remove animation and transitions when reduced motion is requested."}
+    ],
+    "breakpoints": [{"name": "stack", "value": "980px"}, {"name": "compact", "value": "620px"}]
+  },
+  "components": [
+    {
+      "name": "Civic Masthead", "kind": "nav", "refersTo": "civic-masthead", "description": "Compact identity, Mumbai public-data context, and source navigation.",
+      "html": "<header class=\"ds-masthead\"><a class=\"ds-brand\" href=\"#\"><svg viewBox=\"0 0 40 40\" aria-hidden=\"true\"><path d=\"M20 3.5 34 11v18L20 36.5 6 29V11Z\"/><path d=\"M12 23.5c3.2-5.8 7.3-9.3 12.4-10.6M11.5 28c5.6-3.2 10.8-3.4 15.7-.7M20 11.5v17\"/></svg><span><strong>Sahayata</strong><small>Atlas</small></span></a><div><strong>Mumbai public infrastructure lookup</strong><span>Preparedness view · on-demand public data</span></div><a href=\"#\">How this data works ↓</a></header>",
+      "css": ".ds-masthead{min-height:84px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:32px;padding:0 clamp(22px,4vw,64px);color:#283618;background:#fffdf1;border-bottom:1px solid #d5c79d;font-family:'Source Sans 3','Segoe UI',sans-serif}.ds-brand{display:inline-flex;align-items:center;gap:12px;color:inherit;text-decoration:none}.ds-brand svg{width:44px;fill:none;stroke:#bc6c25;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}.ds-brand strong{display:block;font:700 28px/.8 'Barlow Condensed','Arial Narrow',sans-serif}.ds-brand small,.ds-masthead div span{display:block;color:#606c38}.ds-masthead div{padding-left:28px;border-left:1px solid #d5c79d}.ds-masthead a{color:inherit;font-weight:700;text-underline-offset:4px}.ds-masthead a:focus-visible{outline:3px solid #bc6c25;outline-offset:3px}"
+    },
+    {
+      "name": "Mumbai Locality Search", "kind": "input", "refersTo": "search-field", "description": "The composed Mumbai-only query field and single Sand primary action.",
+      "html": "<label class=\"ds-search-label\" for=\"ds-city\">Mumbai locality</label><div class=\"ds-search-field\"><span aria-hidden=\"true\">⌖</span><input id=\"ds-city\" type=\"search\" placeholder=\"Try Andheri, Bandra, Powai…\"><button type=\"button\">Find resources <span>→</span></button></div>",
+      "css": ".ds-search-label{display:block;margin-bottom:8px;color:#e8ddb6;font:700 14px/1.5 'Source Sans 3','Segoe UI',sans-serif}.ds-search-field{min-height:66px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;padding-left:20px;color:#283618;background:#fffdf1;box-shadow:0 15px 34px rgba(20,29,10,.32);font-family:'Source Sans 3','Segoe UI',sans-serif}.ds-search-field>span{color:#bc6c25;font-size:21px}.ds-search-field input{min-width:0;height:66px;padding:0 18px;color:#283618;background:transparent;border:0;outline:0;font-size:18px}.ds-search-field input::placeholder{color:#606c38}.ds-search-field button{align-self:stretch;display:inline-flex;align-items:center;gap:18px;padding:0 24px;color:#283618;background:#dda15e;border:0;font-weight:800;cursor:pointer}.ds-search-field button:hover{background:#d29450}.ds-search-field button span{transition:transform 180ms ease-out}.ds-search-field button:hover span{transform:translateX(3px)}.ds-search-field:focus-within{outline:3px solid #dda15e;outline-offset:3px}"
+    },
+    {
+      "name": "Use My Location", "kind": "button", "description": "Optional, user-triggered geolocation with pending or recoverable Mumbai-only status kept beside the control.",
+      "html": "<div class=\"ds-location-choice\"><button class=\"ds-location-button\" type=\"button\">⌖ Use my location</button><p data-state=\"idle\">Permission is requested only when you choose this option. Your location is used for this session and is not stored.</p></div>",
+      "css": ".ds-location-choice{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:14px;color:#e8ddb6;font:400 12px/1.35 'Source Sans 3','Segoe UI',sans-serif}.ds-location-button{min-height:44px;padding:8px 13px;color:#fefae0;background:#606c38;border:1px solid #dda15e;border-radius:0;font-weight:800;cursor:pointer}.ds-location-button:hover{background:#4f5c2d;border-color:#fefae0}.ds-location-button:focus-visible{outline:3px solid #dda15e;outline-offset:3px}.ds-location-choice p{max-width:58ch;margin:0}.ds-location-choice p[data-state='error']{color:#f5deb4;border-left:3px solid #bc6c25;padding-left:9px}"
+    },
+    {
+      "name": "Inventory Scope Select", "kind": "input", "refersTo": "query-select", "description": "A square Olive selector for place, facility, or organisation scope.",
+      "html": "<label class=\"ds-query-select\" for=\"ds-category\"><span>Place type</span><span class=\"ds-select-shell\"><select id=\"ds-category\"><option>All place types</option><option>Medical facilities</option><option>Emergency shelters</option></select><span aria-hidden=\"true\">⌄</span></span></label>",
+      "css": ".ds-query-select{min-width:0;display:block;color:#e8ddb6;font:700 12px/1.5 'Source Sans 3','Segoe UI',sans-serif}.ds-query-select>span:first-child{display:block;margin-bottom:5px}.ds-select-shell{position:relative;display:block}.ds-select-shell select{width:100%;height:44px;padding:0 36px 0 12px;color:#fefae0;background:#606c38;border:1px solid #dda15e;border-radius:0;outline:0;appearance:none;font-weight:600;cursor:pointer}.ds-select-shell>span{position:absolute;top:50%;right:11px;pointer-events:none;transform:translateY(-50%)}.ds-select-shell:focus-within{outline:3px solid #dda15e;outline-offset:2px}"
+    },
+    {
+      "name": "Map Status Toolbar", "kind": "custom", "refersTo": "map-toolbar", "description": "A pale overlay showing Mumbai query resolution and the recenter action.",
+      "html": "<div class=\"ds-map-toolbar\"><div class=\"ds-map-status\"><span class=\"ds-status-dot\" aria-hidden=\"true\"></span><strong>Mumbai</strong><small>16 listings · resolved 3:40 pm</small></div><button type=\"button\" aria-label=\"Recenter map\">⌖</button></div>",
+      "css": ".ds-map-toolbar{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px 14px 13px 16px;color:#283618;background:rgba(255,253,241,.96);box-shadow:0 12px 28px rgba(40,54,24,.2);font-family:'Source Sans 3','Segoe UI',sans-serif}.ds-map-status{display:grid;grid-template-columns:auto auto;align-items:center;column-gap:9px}.ds-map-status small{grid-column:2;color:#606c38;font-size:12px}.ds-status-dot{grid-row:1/span 2;width:9px;height:9px;border-radius:50%;background:#606c38;box-shadow:0 0 0 5px #e0e3c7}.ds-map-toolbar button{width:44px;height:44px;color:#283618;background:#f4edcf;border:0;cursor:pointer}.ds-map-toolbar button:hover{color:#bc6c25;background:#e9dfb9}.ds-map-toolbar button:focus-visible{outline:3px solid #bc6c25;outline-offset:3px}"
+    },
+    {
+      "name": "Resource Row", "kind": "card", "refersTo": "resource-row", "description": "A ranked ledger item whose selection is shared with its map marker.",
+      "html": "<button class=\"ds-resource-row\" type=\"button\" aria-expanded=\"true\"><span class=\"ds-rank\">01</span><span class=\"ds-node-symbol\">+</span><span class=\"ds-node-copy\"><strong>City Civil Hospital</strong><small>Hospital · 1.2 km away</small></span><span class=\"ds-node-status\">Inferred: Government</span><span class=\"ds-row-arrow\">›</span></button>",
+      "css": ".ds-resource-row{width:100%;display:grid;grid-template-columns:auto auto minmax(0,1fr) auto auto;align-items:center;gap:11px;padding:18px 22px;color:#283618;text-align:left;background:#f3e7c9;border:0;border-bottom:1px solid #e8dfbd;font-family:'Source Sans 3','Segoe UI',sans-serif;cursor:pointer}.ds-resource-row:hover,.ds-resource-row:focus-visible{background:#f4edcf}.ds-resource-row:focus-visible{outline:3px solid #bc6c25;outline-offset:3px}.ds-rank{color:#606c38;font:700 15px/1 'Barlow Condensed','Arial Narrow',sans-serif}.ds-node-symbol{width:36px;height:36px;display:grid;place-items:center;color:#bc6c25;background:#f4dfbd;border-radius:12px;font-weight:800}.ds-node-copy{min-width:0}.ds-node-copy strong,.ds-node-copy small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ds-node-copy small{margin-top:3px;color:#606c38;font-size:12px}.ds-node-status{padding:4px 7px;color:#283618;background:#e7dfbd;border:1px solid #d5c79d;border-radius:999px;font-size:11px;font-weight:700}.ds-row-arrow{color:#606c38;font-size:22px;transform:rotate(90deg)}"
+    },
+    {
+      "name": "Partial Coverage Warning", "kind": "custom", "description": "A non-blocking ledger warning for delayed sources when partial Mumbai results remain usable.",
+      "html": "<div class=\"ds-coverage-warning\" role=\"status\"><span aria-hidden=\"true\">!</span><span><strong>Some sources are delayed.</strong>Available Mumbai listings remain visible.</span></div>",
+      "css": ".ds-coverage-warning{display:flex;align-items:flex-start;gap:9px;padding:11px 22px;color:#283618;background:#f4dfbd;border-bottom:1px solid #d5c79d;font:400 12px/1.5 'Source Sans 3','Segoe UI',sans-serif}.ds-coverage-warning>span:first-child{width:17px;color:#bc6c25;font-weight:800}.ds-coverage-warning>span:last-child{display:grid;gap:2px}.ds-coverage-warning strong{font-size:13px}"
+    },
+    {
+      "name": "Retained Results Error", "kind": "custom", "description": "A blocking refresh error that leaves the previous Mumbai result set intact.",
+      "html": "<div class=\"ds-ledger-error\" role=\"alert\"><span aria-hidden=\"true\">!</span><span><strong>New search not loaded.</strong>Your previous Mumbai results remain available.</span></div>",
+      "css": ".ds-ledger-error{display:flex;align-items:flex-start;gap:9px;padding:11px 22px;color:#612e14;background:#f6ddbd;border-bottom:1px solid #d49b63;font:400 12px/1.5 'Source Sans 3','Segoe UI',sans-serif}.ds-ledger-error>span:first-child{width:17px;color:#bc6c25;font-weight:800}.ds-ledger-error>span:last-child{display:grid;gap:2px}.ds-ledger-error strong{font-size:13px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Civic Resource Desk",
+    "overview": "The Atlas feels like a public-service workstation brought into the present: formal enough to inspire care, direct enough to use under pressure, and explicit about the limits of its evidence. A compact masthead and deep civic command band frame the operative map-and-ledger workspace rather than turning the page into a promotional landing screen.\n\nThe visual world is dense but calm. Warm cream work areas, pale ledger surfaces, sand action, olive status cues, and clipped typography create a field-ready rhythm. Information hierarchy comes from scale, placement, tonal layering, and a disciplined split between the spatial map and ranked textual evidence.",
+    "keyCharacteristics": ["Deep forest civic framing around a warm cream workspace.", "Sand reserved for the primary query action; ochre marks selection and direction.", "Map-first desktop composition with a dense, ranked resource ledger.", "Three square scope selectors directly under the city query.", "Condensed display typography paired with highly legible operational body copy.", "Square-cut controls, with rounded geometry reserved for shortcuts, status, and map symbols.", "Visible source, freshness, classification, and emergency-use limitations."],
+    "rules": [
+      {"name": "The Civic Frame Rule", "body": "Civic Ink owns the large framing surfaces; pale tones own the work area. Do not invert this relationship on new operational screens.", "section": "colors"},
+      {"name": "The Warm Action Rule", "body": "Sand identifies the primary task, while darker Ochre is reserved for selection and directional emphasis.", "section": "colors"},
+      {"name": "The Evidence Color Rule", "body": "The four palette roles classify observed listings and Olive marks interface resolution. Inferred organisation labels stay neutral so they cannot be mistaken for verified ownership, readiness, capacity, or availability.", "section": "colors"},
+      {"name": "The Condensed Command Rule", "body": "Use Barlow Condensed for orientation, identity, and rank—not for paragraphs, field values, or dense metadata.", "section": "typography"},
+      {"name": "The Plain Evidence Rule", "body": "Limit body text to short, direct phrases and readable measure; operational limitations remain normal sentence case, never promotional display copy.", "section": "typography"},
+      {"name": "The Map-Led Split Rule", "body": "On wide screens, preserve the larger spatial field and narrower textual ledger as one coupled workspace; on smaller screens, stack map before ledger without removing either view.", "section": "layout"},
+      {"name": "The Compact Edge Rule", "body": "Operational gutters shrink before content does. Keep touch targets and type readable while reducing outer whitespace at narrow widths.", "section": "layout"},
+      {"name": "The Operational Lift Rule", "body": "Use elevation to distinguish an active control, overlay, or selected detail from its working surface; keep passive information separated by tone and rules.", "section": "elevation"},
+      {"name": "The Semantic Curve Rule", "body": "Curves identify compact state, shortcut, category, or location; do not round large structural surfaces, native selectors, or primary work controls.", "section": "shapes"},
+      {"name": "The Coupled Evidence Rule", "body": "A resource selection must connect the textual row to the map and keep classification, distance, freshness, and limitations available together.", "section": "components"}
+    ],
+    "dos": ["Do preserve the Forest command band, Cream work field, and pale evidence surfaces as the primary layer order.", "Do keep the search action visually dominant with Sand and a clear verb; reserve Ochre for selection and direction.", "Do repeat category colors consistently across pins, legends, and node symbols.", "Do maintain 3px keyboard focus outlines and the reduced-motion override.", "Do keep place, facility, and organisation scope adjacent to the city query and echo the resolved scope in the ledger summary.", "Do stack the map before the ledger below the desktop split while retaining selectors and source limitations.", "Do use plain status language that distinguishes a public listing from verified emergency readiness.", "Do keep location permission optional, explain its session-only use before prompting, and preserve city search as the fallback.", "Do label the in-map line as straight-line orientation and the external action as road directions."],
+    "donts": ["Don't round structural panels, toolbars, search controls, native selectors, or primary buttons; curves are reserved for compact semantic elements.", "Don't use semantic category colors as decorative accents or as guarantees of urgency, capacity, or availability.", "Don't turn Ochre into a competing primary action color; Sand remains the single primary action voice.", "Don't replace the map-led workspace with a generic card grid or a form-heavy portal layout.", "Don't hide source, freshness, classification, or non-dispatch limitations behind secondary navigation.", "Don't use display typography for paragraphs, field values, or dense metadata.", "Don't request location on page load or describe the straight map line as a road route."]
+  }
+}
