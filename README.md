@@ -84,7 +84,7 @@ The Playwright configuration uses Helium when it is installed at `/Applications/
 
 The same-origin interface is documented in [backend-requirements.md](backend-requirements.md). Runtime settings are environment variables; copy `.env.example` for local defaults. Important settings include upstream timeout, Overpass endpoint, cache duration, cache capacity, and per-IP request limit.
 
-Data providers are Open-Meteo Geocoding, OpenStreetMap Overpass, and Wikipedia GeoSearch. All result provenance remains visible in the interface.
+Location search uses Open-Meteo first, then Mumbai-bounded OpenStreetMap Photon and Nominatim fallbacks for streets, neighbourhoods, landmarks, misspellings, and other named places. Photon ranks fuzzy text matches with a Mumbai location bias; the backend rejects out-of-bounds results and breaks comparable matches by proximity to central Mumbai. Searches run only when submitted, resolved places are cached for 24 hours, public-provider calls are globally paced, and both endpoints are configurable without a code change. Resource data comes from OpenStreetMap Overpass and Wikipedia GeoSearch. All result provenance remains visible in the interface.
 
 ## Deploy on Render
 

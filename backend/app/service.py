@@ -2,6 +2,8 @@ import asyncio
 import math
 import re
 from datetime import UTC, datetime
+from difflib import SequenceMatcher
+from time import monotonic
 from typing import Any
 
 import httpx
@@ -22,8 +24,9 @@ from .models import (
 )
 from .settings import Settings
 
-USER_AGENT = "SahayataAtlas/1.0 (public emergency-resource discovery)"
+USER_AGENT = "SahayataAtlas/1.1 (+https://sahayata-atlas-ur3z.onrender.com/)"
 MUMBAI_BOUNDS = (18.85, 72.70, 19.35, 73.15)
+MUMBAI_CENTER = (19.076, 72.8777)
 
 
 def inside_mumbai(latitude: float, longitude: float) -> bool:
@@ -39,7 +42,16 @@ class ResourceService:
             maxsize=settings.cache_max_entries,
             ttl=settings.cache_ttl_seconds,
         )
+        self.location_cache: TTLCache[str, Location] = TTLCache(
+            maxsize=settings.cache_max_entries,
+            ttl=settings.geocoding_cache_ttl_seconds,
+        )
         self.cache_lock = asyncio.Lock()
+        self.location_cache_lock = asyncio.Lock()
+        self.photon_lock = asyncio.Lock()
+        self.photon_last_request = 0.0
+        self.nominatim_lock = asyncio.Lock()
+        self.nominatim_last_request = 0.0
 
     async def search(self, query: NearbyQuery, request_id: str) -> NearbyResponse:
         key = self._cache_key(query)
@@ -131,6 +143,30 @@ class ResourceService:
         except (httpx.HTTPError, ValueError) as error:
             raise ProviderError(provider) from error
 
+    async def _get_json_list(
+        self,
+        provider: str,
+        url: str,
+        *,
+        params: dict[str, Any] | None = None,
+    ) -> list[Any]:
+        try:
+            response = await self.client.get(
+                url,
+                params=params,
+                headers={"Accept": "application/json", "User-Agent": USER_AGENT},
+                timeout=self.settings.upstream_timeout_seconds,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            if not isinstance(payload, list):
+                raise ValueError("Expected a JSON array")
+            return payload
+        except httpx.TimeoutException as error:
+            raise ProviderError(provider, timed_out=True) from error
+        except (httpx.HTTPError, ValueError) as error:
+            raise ProviderError(provider) from error
+
     async def _resolve_location(self, query: NearbyQuery) -> Location:
         if query.city is None:
             return Location(
@@ -139,40 +175,221 @@ class ResourceService:
                 latitude=query.latitude,
                 longitude=query.longitude,
             )
-        payload = await self._get_json(
-            "Open-Meteo",
-            "https://geocoding-api.open-meteo.com/v1/search",
-            params={
-                "name": query.city,
-                "count": 5,
-                "countryCode": "IN",
-                "language": "en",
-                "format": "json",
-            },
-        )
-        results = payload.get("results")
-        if not isinstance(results, list):
-            raise ApiError(404, "LOCATION_NOT_FOUND", "That Mumbai locality could not be found.")
-        match = next(
-            (
-                item
-                for item in results
-                if isinstance(item, dict)
-                and item.get("country_code") == "IN"
-                and isinstance(item.get("latitude"), int | float)
-                and isinstance(item.get("longitude"), int | float)
-                and inside_mumbai(float(item["latitude"]), float(item["longitude"]))
-            ),
-            None,
-        )
-        if match is None:
+        search_term = " ".join(query.city.split())
+        cache_key = search_term.casefold()
+        async with self.location_cache_lock:
+            cached = self.location_cache.get(cache_key)
+        if cached:
+            return cached
+
+        failures: list[ProviderError] = []
+        outside_service_area = False
+        try:
+            payload = await self._get_json(
+                "Open-Meteo",
+                "https://geocoding-api.open-meteo.com/v1/search",
+                params={
+                    "name": search_term,
+                    "count": 10,
+                    "countryCode": "IN",
+                    "language": "en",
+                    "format": "json",
+                },
+            )
+            raw_results = payload.get("results")
+            results = raw_results if isinstance(raw_results, list) else []
+            outside_service_area = any(self._is_valid_geocoding_result(item) for item in results)
+            match = next(
+                (
+                    item
+                    for item in results
+                    if self._is_valid_geocoding_result(item)
+                    and inside_mumbai(float(item["latitude"]), float(item["longitude"]))
+                ),
+                None,
+            )
+            if isinstance(match, dict):
+                location = self._open_meteo_location(match, search_term)
+                await self._cache_location(cache_key, location)
+                return location
+        except ProviderError as error:
+            failures.append(error)
+
+        try:
+            features = await self._photon(search_term)
+            match = self._best_photon_match(features, search_term)
+            if match is not None:
+                location = self._photon_location(match, search_term)
+                await self._cache_location(cache_key, location)
+                return location
+        except ProviderError as error:
+            failures.append(error)
+
+        try:
+            results = await self._nominatim(search_term)
+            match = next(
+                (
+                    item
+                    for item in results
+                    if isinstance(item, dict)
+                    and self._coordinate(item.get("lat")) is not None
+                    and self._coordinate(item.get("lon")) is not None
+                    and inside_mumbai(
+                        self._coordinate(item.get("lat")),
+                        self._coordinate(item.get("lon")),
+                    )
+                ),
+                None,
+            )
+            if isinstance(match, dict):
+                location = self._nominatim_location(match, search_term)
+                await self._cache_location(cache_key, location)
+                return location
+        except ProviderError as error:
+            failures.append(error)
+
+        if len(failures) == 3:
+            timed_out = all(error.timed_out for error in failures)
+            raise ApiError(
+                504 if timed_out else 502,
+                "UPSTREAM_TIMEOUT" if timed_out else "UPSTREAM_FAILURE",
+                "Location providers took too long to respond. Please try again."
+                if timed_out
+                else "Location search is temporarily unavailable. Please try again.",
+                retryable=True,
+            )
+        if outside_service_area:
             raise ApiError(
                 422,
                 "LOCATION_OUTSIDE_SERVICE_AREA",
                 "This region is outside Mumbai and is currently not available. "
                 "Search a Mumbai locality instead.",
             )
-        name = str(match.get("name") or query.city)
+        raise ApiError(404, "LOCATION_NOT_FOUND", "That Mumbai locality could not be found.")
+
+    async def _photon(self, search_term: str) -> list[Any]:
+        south, west, north, east = MUMBAI_BOUNDS
+        async with self.photon_lock:
+            wait_seconds = self.settings.photon_min_interval_seconds - (
+                monotonic() - self.photon_last_request
+            )
+            if wait_seconds > 0:
+                await asyncio.sleep(wait_seconds)
+            self.photon_last_request = monotonic()
+            payload = await self._get_json(
+                "OpenStreetMap Photon",
+                self.settings.photon_url,
+                params={
+                    "q": search_term,
+                    "lat": MUMBAI_CENTER[0],
+                    "lon": MUMBAI_CENTER[1],
+                    "bbox": f"{west},{south},{east},{north}",
+                    "location_bias_scale": 0.1,
+                    "limit": 10,
+                    "lang": "en",
+                },
+            )
+        features = payload.get("features")
+        if not isinstance(features, list):
+            raise ProviderError("OpenStreetMap Photon")
+        return features
+
+    async def _nominatim(self, search_term: str) -> list[Any]:
+        south, west, north, east = MUMBAI_BOUNDS
+        async with self.nominatim_lock:
+            wait_seconds = self.settings.nominatim_min_interval_seconds - (
+                monotonic() - self.nominatim_last_request
+            )
+            if wait_seconds > 0:
+                await asyncio.sleep(wait_seconds)
+            self.nominatim_last_request = monotonic()
+            return await self._get_json_list(
+                "OpenStreetMap Nominatim",
+                self.settings.nominatim_url,
+                params={
+                    "q": f"{search_term}, Mumbai, Maharashtra, India",
+                    "format": "jsonv2",
+                    "addressdetails": 1,
+                    "limit": 10,
+                    "countrycodes": "in",
+                    "viewbox": f"{west},{north},{east},{south}",
+                    "bounded": 1,
+                    "accept-language": "en",
+                },
+            )
+
+    async def _cache_location(self, cache_key: str, location: Location) -> None:
+        async with self.location_cache_lock:
+            self.location_cache[cache_key] = location
+
+    @staticmethod
+    def _is_valid_geocoding_result(item: Any) -> bool:
+        return (
+            isinstance(item, dict)
+            and item.get("country_code") == "IN"
+            and isinstance(item.get("latitude"), int | float)
+            and isinstance(item.get("longitude"), int | float)
+        )
+
+    @staticmethod
+    def _coordinate(value: Any) -> float | None:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    @classmethod
+    def _best_photon_match(cls, features: list[Any], search_term: str) -> dict[str, Any] | None:
+        query_text = cls._normalise_place_text(search_term)
+        candidates: list[tuple[float, float, int, dict[str, Any]]] = []
+        for index, feature in enumerate(features):
+            if not isinstance(feature, dict):
+                continue
+            geometry = feature.get("geometry")
+            properties = feature.get("properties")
+            if not isinstance(geometry, dict) or not isinstance(properties, dict):
+                continue
+            coordinates = geometry.get("coordinates")
+            if not isinstance(coordinates, list) or len(coordinates) < 2:
+                continue
+            longitude = cls._coordinate(coordinates[0])
+            latitude = cls._coordinate(coordinates[1])
+            if latitude is None or longitude is None or not inside_mumbai(latitude, longitude):
+                continue
+            labels = [
+                properties.get(key)
+                for key in ("name", "street", "locality", "district", "city", "county")
+                if properties.get(key)
+            ]
+            similarity = max(
+                (
+                    SequenceMatcher(
+                        None,
+                        query_text,
+                        cls._normalise_place_text(str(label)),
+                    ).ratio()
+                    for label in labels
+                ),
+                default=0.0,
+            )
+            if similarity < 0.45:
+                continue
+            centre_distance = cls._distance(
+                MUMBAI_CENTER[0],
+                MUMBAI_CENTER[1],
+                latitude,
+                longitude,
+            )
+            candidates.append((similarity, -centre_distance, -index, feature))
+        return max(candidates, default=None, key=lambda item: item[:3])[3] if candidates else None
+
+    @staticmethod
+    def _normalise_place_text(value: str) -> str:
+        return re.sub(r"[^a-z0-9]+", " ", value.casefold()).strip()
+
+    @staticmethod
+    def _open_meteo_location(match: dict[str, Any], search_term: str) -> Location:
+        name = str(match.get("name") or search_term)
         return Location(
             query_type="city",
             display_name=name,
@@ -181,6 +398,55 @@ class ResourceService:
             state=str(match["admin1"]) if match.get("admin1") else None,
             latitude=float(match["latitude"]),
             longitude=float(match["longitude"]),
+        )
+
+    @classmethod
+    def _nominatim_location(cls, match: dict[str, Any], search_term: str) -> Location:
+        latitude = cls._coordinate(match.get("lat"))
+        longitude = cls._coordinate(match.get("lon"))
+        if latitude is None or longitude is None:
+            raise ValueError("Nominatim result is missing coordinates")
+        address = match.get("address") if isinstance(match.get("address"), dict) else {}
+        district = (
+            address.get("city_district")
+            or address.get("state_district")
+            or address.get("county")
+        )
+        state = address.get("state")
+        return Location(
+            query_type="city",
+            display_name=search_term,
+            city=search_term,
+            district=str(district) if district else None,
+            state=str(state) if state else None,
+            latitude=latitude,
+            longitude=longitude,
+        )
+
+    @classmethod
+    def _photon_location(cls, match: dict[str, Any], search_term: str) -> Location:
+        geometry = match.get("geometry") if isinstance(match.get("geometry"), dict) else {}
+        properties = (
+            match.get("properties") if isinstance(match.get("properties"), dict) else {}
+        )
+        coordinates = geometry.get("coordinates")
+        if not isinstance(coordinates, list) or len(coordinates) < 2:
+            raise ValueError("Photon result is missing coordinates")
+        longitude = cls._coordinate(coordinates[0])
+        latitude = cls._coordinate(coordinates[1])
+        if latitude is None or longitude is None:
+            raise ValueError("Photon result is missing coordinates")
+        name = str(properties.get("name") or properties.get("street") or search_term)
+        district = properties.get("district") or properties.get("county")
+        state = properties.get("state")
+        return Location(
+            query_type="city",
+            display_name=name,
+            city=name,
+            district=str(district) if district else None,
+            state=str(state) if state else None,
+            latitude=latitude,
+            longitude=longitude,
         )
 
     async def _openstreetmap(

@@ -180,6 +180,7 @@ Every non-2xx response must use this shape:
 - Allow `GET` and `OPTIONS` for the required endpoints.
 - Same-origin production requests do not require CORS. If the API is split into a separate service later, explicitly allow the approved frontend origins and never use `*` with credentials.
 - No authentication cookies or browser credentials are required for version 1.
+- Submitted place searches may use configurable, Mumbai-bounded OpenStreetMap Photon and Nominatim fallbacks. The backend must identify the application, rank fuzzy results within the service area, cache resolved locations, and enforce configured provider request intervals; the browser must not call providers directly or issue autocomplete requests.
 - Return `Access-Control-Allow-Headers: Accept, Content-Type, X-Request-ID`.
 - Return `X-Request-ID` on every response.
 - Recommended successful-search caching: `Cache-Control: public, max-age=60, stale-if-error=300`.

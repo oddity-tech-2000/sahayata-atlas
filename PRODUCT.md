@@ -32,7 +32,7 @@ The primary workflow is a Mumbai-region resource query inspired by the public ID
 
 ## Capabilities and Constraints
 
-- Locality lookup is limited to the Mumbai region by the backend.
+- Submitted neighbourhood, street, landmark, and locality searches are limited to the Mumbai region by the backend.
 - Device location is optional, requested only after an explicit user action, held only in the current browser session, and validated against the Mumbai service bounds.
 - The browser calls only the same-origin `/api/v1/resources/nearby` backend route.
 - The backend integration boundary and service levels are defined in `backend-requirements.md`.
@@ -49,7 +49,7 @@ Use IDRN and NIDM as factual reference context without implying that this protot
 
 - Backend agreement: `backend-requirements.md` in this project.
 - Reference information architecture: `https://idrn.nidm.gov.in/`.
-- Live data sources: Open-Meteo Geocoding API, English Wikipedia GeoSearch API, and OpenStreetMap Overpass API.
+- Live data sources: Open-Meteo Geocoding API, OpenStreetMap Photon, Nominatim, and Overpass APIs, and English Wikipedia GeoSearch API.
 - No verified facility availability, official inventory totals, or emergency-response guarantees are available and none should be fabricated.
 
 ## Product Principles

@@ -311,7 +311,7 @@ export function App() {
         <section className="search-command" aria-labelledby="search-title">
           <div className="search-intro">
             <h1 id="search-title">Find response infrastructure across Mumbai.</h1>
-            <p>Search a Mumbai locality to map hospitals and public places listed within 10 km.</p>
+            <p>Search a Mumbai neighbourhood, street, or landmark to map public resources listed within 10 km.</p>
             <div className="scope-note"><MapPin aria-hidden="true" /><span>Currently available in the Mumbai region</span></div>
           </div>
 
@@ -324,7 +324,7 @@ export function App() {
                 name="city"
                 type="search"
                 autoComplete="address-level2"
-                placeholder="Try Andheri, Bandra, Powai…"
+                placeholder="Try Dadar, Marine Lines, Kalbadevi…"
                 aria-describedby={error ? "search-error" : undefined}
                 aria-invalid={Boolean(error)}
                 value={cityInput}
@@ -451,7 +451,7 @@ export function App() {
                 <p>{loading
                   ? "Place resolution usually returns first; detailed public listings can take a little longer."
                   : error
-                    ? "Check the search message, then try Mumbai, Andheri, Bandra, or Powai again."
+                    ? "Check the search message, then try a Mumbai neighbourhood, street, or landmark again."
                     : "Results are requested on demand. No location history is stored by this application."}</p>
               </div>
             )}
@@ -601,6 +601,7 @@ export function App() {
           </div>
           <dl>
             <div><dt>Service region</dt><dd>Mumbai localities and in-region device coordinates</dd></div>
+            <div><dt>Location search</dt><dd>Open-Meteo + OSM Photon/Nominatim · on submit</dd></div>
             <div><dt>Hospitals & clinics</dt><dd>OpenStreetMap Overpass · on-demand</dd></div>
             <div><dt>Other public places</dt><dd>Wikipedia GeoSearch · within 10 km</dd></div>
             <div><dt>Organisation type</dt><dd>Operator metadata and name inference · qualified in every result</dd></div>
