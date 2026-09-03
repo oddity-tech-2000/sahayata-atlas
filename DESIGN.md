@@ -71,6 +71,9 @@ typography:
     lineHeight: 1.5
   ramp:
     fontSize: "10px 11px 12px 13px 14px 15px 16px 17px 18px 24px 28px 30px 32px 43px"
+  devanagari:
+    fontFamily: "Noto Sans Devanagari, Nirmala UI, sans-serif"
+    languages: "Hindi and Marathi"
 rounded:
   square: "0px"
   marker: "5px"
@@ -209,8 +212,13 @@ The palette is drawn from the specified woodland range: Forest `#283618`, Olive 
 
 **Display Font:** Barlow Condensed (with Arial Narrow and sans-serif fallbacks)  
 **Body Font:** Source Sans 3 (with Segoe UI and sans-serif fallbacks)
+**Devanagari Font:** Noto Sans Devanagari (with Nirmala UI and sans-serif fallbacks) for Hindi and Marathi display and body copy
 
 **Character:** Barlow Condensed brings the square-cut, information-desk authority used by the identity, commands, section titles, and ranks. Source Sans 3 carries every explanatory, interactive, and data-bearing sentence with neutral public-service clarity.
+
+### Accessibility variants
+
+The masthead provides user-controlled standard, large (112.5%), and extra-large (125%) text modes, plus higher-contrast palette tokens, reduced motion, link underlines, and an enhanced keyboard-focus ring. These are persistent preferences, not alternate product themes, and must preserve the square civic geometry and mobile reading order.
 
 ### Hierarchy
 

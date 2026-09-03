@@ -4,7 +4,7 @@ from collections import defaultdict, deque
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
 import httpx
@@ -132,6 +132,7 @@ def create_app(resource_service: ResourceService | Any | None = None) -> FastAPI
         latitude: float | None = Query(default=None, ge=-90, le=90),
         longitude: float | None = Query(default=None, ge=-180, le=180),
         radius_km: int = Query(default=10, ge=1, le=50),
+        language: Literal["en", "hi", "mr"] = Query(default="en"),
     ) -> NearbyResponse:
         client_ip = request.client.host if request.client else "unknown"
         if not limiter.allow(client_ip):
@@ -170,6 +171,7 @@ def create_app(resource_service: ResourceService | Any | None = None) -> FastAPI
                 latitude=latitude,
                 longitude=longitude,
                 radius_km=radius_km,
+                language=language,
             ),
             request.state.request_id,
         )

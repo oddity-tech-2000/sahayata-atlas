@@ -90,6 +90,56 @@ async def test_open_meteo_match_does_not_call_nominatim() -> None:
     assert len(requests) == 1
 
 
+@pytest.mark.parametrize(
+    ("language", "submitted", "resolved_name"),
+    [
+        ("hi", "दादर", "दादर"),
+        ("mr", "काळबादेवी", "काळबादेवी"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_indian_language_place_search_uses_nominatim(
+    language: str,
+    submitted: str,
+    resolved_name: str,
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.host == "geocoding-api.open-meteo.com":
+            assert request.url.params["language"] == language
+            return httpx.Response(200, json={"results": []})
+        assert request.url.host == "nominatim.openstreetmap.org"
+        assert request.url.params["accept-language"] == language
+        return httpx.Response(
+            200,
+            json=[
+                {
+                    "lat": "18.9986",
+                    "lon": "72.8377",
+                    "name": resolved_name,
+                    "display_name": f"{resolved_name}, मुंबई, महाराष्ट्र, भारत",
+                    "address": {"city_district": "मुंबई", "state": "महाराष्ट्र"},
+                }
+            ],
+        )
+
+    service, client = service_with(handler)
+    try:
+        location = await service._resolve_location(
+            NearbyQuery(city=submitted, language=language),
+        )
+    finally:
+        await client.aclose()
+
+    assert location.display_name == resolved_name
+    assert [request.url.host for request in requests] == [
+        "geocoding-api.open-meteo.com",
+        "nominatim.openstreetmap.org",
+    ]
+
+
 @pytest.mark.asyncio
 async def test_outside_mumbai_result_stays_outside_service_area() -> None:
     def handler(request: httpx.Request) -> httpx.Response:

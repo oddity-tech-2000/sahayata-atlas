@@ -30,13 +30,14 @@ Exactly one location mode is allowed:
 | `latitude` | number | Coordinate mode | Must be provided with `longitude`; range `-90` to `90`. |
 | `longitude` | number | Coordinate mode | Must be provided with `latitude`; range `-180` to `180`. |
 | `radius_km` | integer | No | Default `10`; accepted range `1–50`. The frontend currently sends `10`. |
+| `language` | string | No | Default `en`; accepted values are `en`, `hi`, and `mr`. Selects geocoding and localized provider names where available. |
 
 The backend must reject requests containing both `city` and coordinates. A locality or coordinate outside the supported Mumbai service bounds must return `422 LOCATION_OUTSIDE_SERVICE_AREA`.
 
 Example requests:
 
 ```http
-GET /api/v1/resources/nearby?city=Mumbai&radius_km=10
+GET /api/v1/resources/nearby?city=Mumbai&radius_km=10&language=en
 Accept: application/json
 ```
 
@@ -181,6 +182,7 @@ Every non-2xx response must use this shape:
 - Same-origin production requests do not require CORS. If the API is split into a separate service later, explicitly allow the approved frontend origins and never use `*` with credentials.
 - No authentication cookies or browser credentials are required for version 1.
 - Submitted place searches may use configurable, Mumbai-bounded OpenStreetMap Photon and Nominatim fallbacks. The backend must identify the application, rank fuzzy results within the service area, cache resolved locations, and enforce configured provider request intervals; the browser must not call providers directly or issue autocomplete requests.
+- Hindi and Marathi place searches must accept Devanagari input and use providers that support the selected language. Cache keys must include the requested language so localized results cannot leak across language modes.
 - Return `Access-Control-Allow-Headers: Accept, Content-Type, X-Request-ID`.
 - Return `X-Request-ID` on every response.
 - Recommended successful-search caching: `Cache-Control: public, max-age=60, stale-if-error=300`.

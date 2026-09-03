@@ -35,6 +35,8 @@ The primary workflow is a Mumbai-region resource query inspired by the public ID
 - Submitted neighbourhood, street, landmark, and locality searches are limited to the Mumbai region by the backend.
 - Device location is optional, requested only after an explicit user action, held only in the current browser session, and validated against the Mumbai service bounds.
 - The browser calls only the same-origin `/api/v1/resources/nearby` backend route.
+- English, Hindi, and Marathi are first-class interface and search languages, including Devanagari place queries and language-aware public-resource names when providers publish them.
+- User-controlled accessibility preferences include text scaling, higher contrast, reduced motion, underlined links, and enhanced keyboard focus; preferences remain local to the device.
 - The backend integration boundary and service levels are defined in `backend-requirements.md`.
 - Users can filter by resource category, item (including hospitals and clinics), and inferred department type (`Govt`, `Private`, or `PSUnits`).
 - A selected listing is emphasized in both the ledger and map. With a device location available, the map shows a straight-line orientation guide and offers an external Google Maps road-directions action.
@@ -49,7 +51,7 @@ Use IDRN and NIDM as factual reference context without implying that this protot
 
 - Backend agreement: `backend-requirements.md` in this project.
 - Reference information architecture: `https://idrn.nidm.gov.in/`.
-- Live data sources: Open-Meteo Geocoding API, OpenStreetMap Photon, Nominatim, and Overpass APIs, and English Wikipedia GeoSearch API.
+- Live data sources: Open-Meteo Geocoding API, OpenStreetMap Photon, Nominatim, and Overpass APIs, and language-specific Wikipedia GeoSearch APIs.
 - No verified facility availability, official inventory totals, or emergency-response guarantees are available and none should be fabricated.
 
 ## Product Principles
@@ -62,4 +64,4 @@ Use IDRN and NIDM as factual reference context without implying that this protot
 
 ## Accessibility & Inclusion
 
-Keyboard-operable controls, strong focus visibility, clear status text, reduced-motion support, adequate contrast, and responsive layouts are required.
+Keyboard-operable controls, strong focus visibility, clear status text, user-selectable text size and contrast, reduced-motion support, adequate contrast, and responsive layouts are required. The complete workflow must remain usable in English, Hindi, and Marathi.

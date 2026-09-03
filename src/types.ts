@@ -52,4 +52,5 @@ export interface SearchRequest {
   city?: string;
   latitude?: number;
   longitude?: number;
+  language?: "en" | "hi" | "mr";
 }

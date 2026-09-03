@@ -52,6 +52,26 @@ def test_city_search_contract() -> None:
     assert response.json()["request_id"] == response.headers["x-request-id"]
 
 
+def test_supported_indian_language_is_accepted() -> None:
+    with client() as test_client:
+        response = test_client.get(
+            "/api/v1/resources/nearby",
+            params={"city": "दादर", "language": "hi"},
+        )
+    assert response.status_code == 200
+    assert response.json()["location"]["display_name"] == "दादर"
+
+
+def test_unsupported_language_is_rejected() -> None:
+    with client() as test_client:
+        response = test_client.get(
+            "/api/v1/resources/nearby",
+            params={"city": "Dadar", "language": "fr"},
+        )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_REQUEST"
+
+
 def test_missing_location_is_rejected() -> None:
     with client() as test_client:
         response = test_client.get("/api/v1/resources/nearby")

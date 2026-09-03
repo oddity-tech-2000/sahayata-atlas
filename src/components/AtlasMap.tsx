@@ -10,6 +10,12 @@ interface AtlasMapProps {
   userLocation: [number, number] | null;
   onSelect: (resource: Resource) => void;
   recenterSignal: number;
+  reduceMotion: boolean;
+  labels: {
+    map: string;
+    currentLocation: string;
+    publicListing: string;
+  };
 }
 
 const MUMBAI_CENTER: LatLngExpression = [19.076, 72.8777];
@@ -31,25 +37,33 @@ const locationIcon = L.divIcon({
   iconAnchor: [15, 15],
 });
 
-function MapMotion({ center, selected, recenterSignal }: {
+function MapMotion({ center, selected, recenterSignal, reduceMotion }: {
   center: [number, number] | null;
   selected: Resource | null;
   recenterSignal: number;
+  reduceMotion: boolean;
 }) {
   const map = useMap();
 
   useEffect(() => {
-    if (center) map.flyTo(center, 12, { duration: 0.8 });
-  }, [center, map, recenterSignal]);
+    if (center) {
+      if (reduceMotion) map.setView(center, 12, { animate: false });
+      else map.flyTo(center, 12, { duration: 0.8 });
+    }
+  }, [center, map, recenterSignal, reduceMotion]);
 
   useEffect(() => {
-    if (selected) map.flyTo([selected.latitude, selected.longitude], 15, { duration: 0.65 });
-  }, [map, selected]);
+    if (selected) {
+      const target: [number, number] = [selected.latitude, selected.longitude];
+      if (reduceMotion) map.setView(target, 15, { animate: false });
+      else map.flyTo(target, 15, { duration: 0.65 });
+    }
+  }, [map, reduceMotion, selected]);
 
   return null;
 }
 
-export function AtlasMap({ center, resources, selectedId, userLocation, onSelect, recenterSignal }: AtlasMapProps) {
+export function AtlasMap({ center, resources, selectedId, userLocation, onSelect, recenterSignal, reduceMotion, labels }: AtlasMapProps) {
   const selected = useMemo(
     () => resources.find((resource) => resource.id === selectedId) ?? null,
     [resources, selectedId],
@@ -59,12 +73,12 @@ export function AtlasMap({ center, resources, selectedId, userLocation, onSelect
     : null;
 
   return (
-    <MapContainer center={MUMBAI_CENTER} zoom={10} scrollWheelZoom className="map" aria-label="Map of nearby public infrastructure in Mumbai">
+    <MapContainer center={MUMBAI_CENTER} zoom={10} scrollWheelZoom className="map" aria-label={labels.map}>
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <MapMotion center={center} selected={selected} recenterSignal={recenterSignal} />
+      <MapMotion center={center} selected={selected} recenterSignal={recenterSignal} reduceMotion={reduceMotion} />
       {resources.map((resource) => (
         <Marker
           key={resource.id}
@@ -75,13 +89,13 @@ export function AtlasMap({ center, resources, selectedId, userLocation, onSelect
         >
           <Popup>
             <strong>{resource.name}</strong><br />
-            <span>{resource.source.name} public listing</span>
+            <span>{labels.publicListing.replace("{source}", resource.source.name)}</span>
           </Popup>
         </Marker>
       ))}
       {userLocation && (
-        <Marker position={userLocation} icon={locationIcon} title="Your current location">
-          <Popup>Your current location</Popup>
+        <Marker position={userLocation} icon={locationIcon} title={labels.currentLocation}>
+          <Popup>{labels.currentLocation}</Popup>
         </Marker>
       )}
       {direction && (

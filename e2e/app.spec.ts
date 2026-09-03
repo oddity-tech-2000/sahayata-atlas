@@ -56,7 +56,7 @@ async function mockApi(page: Page) {
       await route.fulfill({
         status: 422,
         contentType: "application/json",
-        body: JSON.stringify({ error: { message: "This region is outside Mumbai and is currently not available. Search a Mumbai locality instead." } }),
+        body: JSON.stringify({ error: { code: "LOCATION_OUTSIDE_SERVICE_AREA", message: "This region is outside Mumbai and is currently not available. Search a Mumbai locality instead." } }),
       });
       return;
     }
@@ -64,7 +64,7 @@ async function mockApi(page: Page) {
       await route.fulfill({
         status: 503,
         contentType: "application/json",
-        body: JSON.stringify({ error: { message: "The resource service is temporarily unavailable. Try again." } }),
+        body: JSON.stringify({ error: { code: "UPSTREAM_FAILURE", message: "The resource service is temporarily unavailable. Try again." } }),
       });
       return;
     }
@@ -85,6 +85,31 @@ async function mockApi(page: Page) {
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(payload) });
   });
 }
+
+test("Hindi, Marathi, and accessibility preferences persist", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+
+  await page.getByLabel("Language").selectOption("hi");
+  await expect(page.locator("html")).toHaveAttribute("lang", "hi");
+  await expect(page.getByRole("heading", { name: "पूरे मुंबई में सहायता सुविधाएँ खोजें।" })).toBeVisible();
+
+  await page.locator(".accessibility-menu > summary").click();
+  await page.getByLabel("बड़ा", { exact: true }).check();
+  await page.getByLabel("अधिक कंट्रास्ट वाले रंग").check();
+  await page.getByLabel("एनीमेशन कम करें").check();
+  await expect(page.locator("html")).toHaveAttribute("data-text-size", "large");
+  await expect(page.locator("html")).toHaveAttribute("data-high-contrast", "true");
+  await expect(page.locator("html")).toHaveAttribute("data-reduce-motion", "true");
+
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("lang", "hi");
+  await expect(page.locator("html")).toHaveAttribute("data-text-size", "large");
+  await page.getByLabel("भाषा").selectOption("mr");
+  await expect(page.locator("html")).toHaveAttribute("lang", "mr");
+  await expect(page.getByRole("heading", { name: "संपूर्ण मुंबईत मदत सुविधा शोधा." })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
 
 test("desktop and mobile Mumbai workflows", async ({ page }) => {
   const browserErrors: string[] = [];

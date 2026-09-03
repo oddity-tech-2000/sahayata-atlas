@@ -12,6 +12,8 @@ The application is a preparedness aid, not an emergency dispatch or verified fac
 - Results can be filtered by place category, facility type—including hospitals—and organisation type.
 - Selecting a resource couples the list row to its map marker. When a user location is available, the map shows an orientation line and provides an external road-directions link.
 - Partial upstream data is displayed as a warning while usable results remain available.
+- The complete interface is available in English, Hindi, and Marathi; submitted Devanagari place names are resolved through language-aware providers.
+- Accessibility settings provide three text sizes, higher contrast, reduced motion, underlined links, and stronger keyboard focus. Preferences stay on the current device.
 
 ## Stack
 
@@ -78,13 +80,13 @@ npm run test:e2e
 docker build -t sahayata-atlas:local .
 ```
 
-The Playwright configuration uses Helium when it is installed at `/Applications/Helium.app/Contents/MacOS/Helium`.
+Playwright is development-only browser testing. It uses Helium when installed at `/Applications/Helium.app/Contents/MacOS/Helium` to exercise complete desktop and mobile workflows and capture review screenshots; it is not copied into the production runtime image.
 
 ## API and configuration
 
 The same-origin interface is documented in [backend-requirements.md](backend-requirements.md). Runtime settings are environment variables; copy `.env.example` for local defaults. Important settings include upstream timeout, Overpass endpoint, cache duration, cache capacity, and per-IP request limit.
 
-Location search uses Open-Meteo first, then Mumbai-bounded OpenStreetMap Photon and Nominatim fallbacks for streets, neighbourhoods, landmarks, misspellings, and other named places. Photon ranks fuzzy text matches with a Mumbai location bias; the backend rejects out-of-bounds results and breaks comparable matches by proximity to central Mumbai. Searches run only when submitted, resolved places are cached for 24 hours, public-provider calls are globally paced, and both endpoints are configurable without a code change. Resource data comes from OpenStreetMap Overpass and Wikipedia GeoSearch. All result provenance remains visible in the interface.
+Location search uses Open-Meteo first, then Mumbai-bounded OpenStreetMap Photon and Nominatim fallbacks for streets, neighbourhoods, landmarks, misspellings, and other named places. Hindi and Marathi searches use Open-Meteo and Nominatim because the public Photon endpoint does not support those language codes. Photon ranks English fuzzy matches with a Mumbai location bias; the backend rejects out-of-bounds results and breaks comparable matches by proximity to central Mumbai. Searches run only when submitted, resolved places are cached per language for 24 hours, public-provider calls are globally paced, and both endpoints are configurable without a code change. Resource data comes from language-selected OpenStreetMap names and Wikipedia GeoSearch. All result provenance remains visible in the interface.
 
 ## Deploy on Render
 

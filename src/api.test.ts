@@ -27,20 +27,23 @@ describe("resource API client", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify(validPayload), { status: 200, headers: { "Content-Type": "application/json" } }),
     );
-    const result = await searchResources({ city: "Mumbai" }, new AbortController().signal);
+    const result = await searchResources({ city: "Mumbai", language: "mr" }, new AbortController().signal);
     expect(result.location.display_name).toBe("Mumbai");
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/v1/resources/nearby?radius_km=10&city=Mumbai",
+      "/api/v1/resources/nearby?radius_km=10&city=Mumbai&language=mr",
       expect.objectContaining({ headers: { Accept: "application/json" } }),
     );
   });
 
   it("surfaces a backend recovery message", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ error: { message: "That Mumbai locality could not be found." } }), { status: 404 }),
+      new Response(JSON.stringify({ error: { code: "LOCATION_NOT_FOUND", message: "That Mumbai locality could not be found." } }), { status: 404 }),
     );
-    await expect(searchResources({ city: "Atlantis" }, new AbortController().signal))
-      .rejects.toThrow("That Mumbai locality could not be found.");
+    const request = searchResources({ city: "Atlantis" }, new AbortController().signal);
+    await expect(request).rejects.toMatchObject({
+      code: "LOCATION_NOT_FOUND",
+      message: "That Mumbai locality could not be found.",
+    });
   });
 
   it("rejects malformed successful responses", async () => {

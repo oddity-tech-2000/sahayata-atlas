@@ -63,8 +63,18 @@ class ResourceService:
         location = await self._resolve_location(query)
         radius_metres = query.radius_km * 1000
         osm_result, wikipedia_result = await asyncio.gather(
-            self._openstreetmap(location.latitude, location.longitude, radius_metres),
-            self._wikipedia(location.latitude, location.longitude, radius_metres),
+            self._openstreetmap(
+                location.latitude,
+                location.longitude,
+                radius_metres,
+                query.language,
+            ),
+            self._wikipedia(
+                location.latitude,
+                location.longitude,
+                radius_metres,
+                query.language,
+            ),
             return_exceptions=True,
         )
         failures = [item for item in (osm_result, wikipedia_result) if isinstance(item, Exception)]
@@ -176,7 +186,7 @@ class ResourceService:
                 longitude=query.longitude,
             )
         search_term = " ".join(query.city.split())
-        cache_key = search_term.casefold()
+        cache_key = f"{query.language}:{search_term.casefold()}"
         async with self.location_cache_lock:
             cached = self.location_cache.get(cache_key)
         if cached:
@@ -192,7 +202,7 @@ class ResourceService:
                     "name": search_term,
                     "count": 10,
                     "countryCode": "IN",
-                    "language": "en",
+                    "language": query.language,
                     "format": "json",
                 },
             )
@@ -215,18 +225,19 @@ class ResourceService:
         except ProviderError as error:
             failures.append(error)
 
-        try:
-            features = await self._photon(search_term)
-            match = self._best_photon_match(features, search_term)
-            if match is not None:
-                location = self._photon_location(match, search_term)
-                await self._cache_location(cache_key, location)
-                return location
-        except ProviderError as error:
-            failures.append(error)
+        if query.language == "en":
+            try:
+                features = await self._photon(search_term)
+                match = self._best_photon_match(features, search_term)
+                if match is not None:
+                    location = self._photon_location(match, search_term)
+                    await self._cache_location(cache_key, location)
+                    return location
+            except ProviderError as error:
+                failures.append(error)
 
         try:
-            results = await self._nominatim(search_term)
+            results = await self._nominatim(search_term, query.language)
             match = next(
                 (
                     item
@@ -248,7 +259,8 @@ class ResourceService:
         except ProviderError as error:
             failures.append(error)
 
-        if len(failures) == 3:
+        provider_count = 3 if query.language == "en" else 2
+        if len(failures) == provider_count:
             timed_out = all(error.timed_out for error in failures)
             raise ApiError(
                 504 if timed_out else 502,
@@ -294,7 +306,7 @@ class ResourceService:
             raise ProviderError("OpenStreetMap Photon")
         return features
 
-    async def _nominatim(self, search_term: str) -> list[Any]:
+    async def _nominatim(self, search_term: str, language: str = "en") -> list[Any]:
         south, west, north, east = MUMBAI_BOUNDS
         async with self.nominatim_lock:
             wait_seconds = self.settings.nominatim_min_interval_seconds - (
@@ -314,7 +326,7 @@ class ResourceService:
                     "countrycodes": "in",
                     "viewbox": f"{west},{north},{east},{south}",
                     "bounded": 1,
-                    "accept-language": "en",
+                    "accept-language": language,
                 },
             )
 
@@ -454,6 +466,7 @@ class ResourceService:
         latitude: float,
         longitude: float,
         radius_metres: int,
+        language: str = "en",
     ) -> list[Resource]:
         query = f'''[out:json][timeout:5];(
           nwr(around:{radius_metres},{latitude},{longitude})["amenity"~"^(hospital|clinic|police|fire_station)$"];
@@ -481,7 +494,8 @@ class ResourceService:
             tags = {str(key): str(value) for key, value in raw_tags.items()}
             fallback = tags.get("amenity") or tags.get("healthcare") or "public resource"
             name = (
-                tags.get("name")
+                tags.get(f"name:{language}")
+                or tags.get("name")
                 or tags.get("name:en")
                 or f"Unnamed {fallback.replace('_', ' ')}"
             )[:200]
@@ -512,10 +526,11 @@ class ResourceService:
         latitude: float,
         longitude: float,
         radius_metres: int,
+        language: str = "en",
     ) -> list[Resource]:
         payload = await self._get_json(
             "Wikipedia",
-            "https://en.wikipedia.org/w/api.php",
+            f"https://{language}.wikipedia.org/w/api.php",
             params={
                 "action": "query",
                 "list": "geosearch",
@@ -558,7 +573,7 @@ class ResourceService:
                     source=Source(
                         name="Wikipedia",
                         record_id=f"page/{page_id}",
-                        record_url=f"https://en.wikipedia.org/?curid={page_id}",
+                        record_url=f"https://{language}.wikipedia.org/?curid={page_id}",
                     ),
                 )
             )
@@ -643,5 +658,8 @@ class ResourceService:
     @staticmethod
     def _cache_key(query: NearbyQuery) -> str:
         if query.city:
-            return f"city:{query.city.lower()}:{query.radius_km}"
-        return f"coordinates:{query.latitude:.3f}:{query.longitude:.3f}:{query.radius_km}"
+            return f"city:{query.language}:{query.city.lower()}:{query.radius_km}"
+        return (
+            f"coordinates:{query.language}:{query.latitude:.3f}:"
+            f"{query.longitude:.3f}:{query.radius_km}"
+        )

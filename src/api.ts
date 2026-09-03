@@ -1,5 +1,15 @@
 import type { NearbyResponse, SearchRequest } from "./types";
 
+export class ResourceApiError extends Error {
+  code: string;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = "ResourceApiError";
+    this.code = code;
+  }
+}
+
 function isNearbyResponse(value: unknown): value is NearbyResponse {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<NearbyResponse>;
@@ -14,6 +24,7 @@ function isNearbyResponse(value: unknown): value is NearbyResponse {
 export async function searchResources(request: SearchRequest, signal: AbortSignal): Promise<NearbyResponse> {
   const query = new URLSearchParams({ radius_km: "10" });
   if (request.city) query.set("city", request.city);
+  if (request.language) query.set("language", request.language);
   if (request.latitude !== undefined && request.longitude !== undefined) {
     query.set("latitude", String(request.latitude));
     query.set("longitude", String(request.longitude));
@@ -26,8 +37,11 @@ export async function searchResources(request: SearchRequest, signal: AbortSigna
   const payload = await response.json().catch(() => null) as unknown;
 
   if (!response.ok) {
-    const errorPayload = payload as { error?: { message?: string } } | null;
-    throw new Error(errorPayload?.error?.message ?? "The resource service could not complete this search.");
+    const errorPayload = payload as { error?: { code?: string; message?: string } } | null;
+    throw new ResourceApiError(
+      errorPayload?.error?.code ?? "UNKNOWN_ERROR",
+      errorPayload?.error?.message ?? "The resource service could not complete this search.",
+    );
   }
   if (!isNearbyResponse(payload)) {
     throw new Error("The resource service returned an incomplete response. Please try again.");

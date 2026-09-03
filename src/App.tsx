@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Accessibility,
   ArrowDown,
   ArrowRight,
   Building2,
@@ -12,40 +13,43 @@ import {
   House,
   Info,
   Landmark,
+  Languages,
   ListFilter,
   LocateFixed,
   MapPin,
   Navigation,
+  RotateCcw,
   Shield,
 } from "lucide-react";
-import { searchResources } from "./api";
+import {
+  applyAccessibilityPreferences,
+  defaultAccessibilityPreferences,
+  loadAccessibilityPreferences,
+  type AccessibilityPreferences,
+  type TextSize,
+} from "./accessibility";
+import { ResourceApiError, searchResources } from "./api";
 import { AtlasMap } from "./components/AtlasMap";
 import { useMediaQuery } from "./hooks/useMediaQuery";
+import { isLanguage, languageNames, localeNames, messages, quickPlaces, translate, type Language } from "./i18n";
 import type { FacilityType, NearbyResponse, OrganisationType, Resource, ResourceCategory, SearchRequest } from "./types";
 
 type CategoryFilter = ResourceCategory | "all";
 type FacilityFilter = FacilityType | "all";
 type OrganisationFilter = OrganisationType | "all";
 
-const quickCities = ["Mumbai", "Andheri", "Bandra", "Powai"];
 const MUMBAI_BOUNDS = { south: 18.85, west: 72.70, north: 19.35, east: 73.15 };
-const categoryLabels: Record<ResourceCategory, string> = {
-  medical: "Medical facility",
-  shelter: "Emergency shelter",
-  security: "Security service",
-  general: "Public place",
-};
-const facilityLabels: Record<FacilityType, string> = {
-  hospital: "Hospital",
-  clinic: "Clinic",
-  public_place: "Public place",
-};
-const organisationLabels: Record<OrganisationType, string> = {
-  government: "Government",
-  private: "Private",
-  public_sector: "Public sector organisation",
-  unclassified: "Unclassified",
-};
+
+function initialLanguage(): Language {
+  try {
+    const saved = window.localStorage.getItem("sahayata-atlas-language");
+    if (isLanguage(saved)) return saved;
+  } catch {
+    // Browser language remains available when storage is blocked.
+  }
+  const browserLanguage = window.navigator.language.toLowerCase().split("-", 1)[0];
+  return isLanguage(browserLanguage) ? browserLanguage : "en";
+}
 
 function BrandMark() {
   return (
@@ -56,15 +60,17 @@ function BrandMark() {
   );
 }
 
-function formatDistance(metres: number | null) {
-  if (metres === null) return "Distance unavailable";
-  return metres < 1000 ? `${Math.round(metres)} m away` : `${(metres / 1000).toFixed(1)} km away`;
+function formatDistance(metres: number | null, language: Language) {
+  if (metres === null) return translate(language, "distanceUnavailable");
+  const value = metres < 1000 ? Math.round(metres) : Number((metres / 1000).toFixed(1));
+  const distance = new Intl.NumberFormat(localeNames[language], { maximumFractionDigits: 1 }).format(value);
+  return translate(language, metres < 1000 ? "metresAway" : "kilometresAway", { distance });
 }
 
-function formatResolvedAt(timestamp: string) {
+function formatResolvedAt(timestamp: string, language: Language) {
   const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) return "just now";
-  return date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString(localeNames[language], { hour: "numeric", minute: "2-digit" });
 }
 
 function ResourceIcon({ category }: { category: ResourceCategory }) {
@@ -86,12 +92,18 @@ function directionsUrl(origin: [number, number], resource: Resource) {
 
 export function App() {
   const compact = useMediaQuery("(max-width: 620px)");
+  const [language, setLanguage] = useState<Language>(initialLanguage);
+  const [accessibilityPreferences, setAccessibilityPreferences] = useState(
+    loadAccessibilityPreferences,
+  );
   const [cityInput, setCityInput] = useState("");
   const [result, setResult] = useState<NearbyResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [requestedLabel, setRequestedLabel] = useState("");
   const [error, setError] = useState("");
-  const [locationMessage, setLocationMessage] = useState("Permission is requested only when you choose this option. Your location is used for this session and is not stored.");
+  const [locationMessage, setLocationMessage] = useState(() =>
+    translate(language, "permissionIntro"),
+  );
   const [locationState, setLocationState] = useState<"idle" | "pending" | "success" | "error">("idle");
   const [locationIntent, setLocationIntent] = useState<"search" | "directions" | null>(null);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
@@ -104,12 +116,53 @@ export function App() {
   const [recenterSignal, setRecenterSignal] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
   const searchErrorRef = useRef<HTMLDivElement>(null);
+  const copy = messages[language];
+  const categoryLabels: Record<ResourceCategory, string> = {
+    medical: copy.medicalFacilities,
+    shelter: copy.emergencyShelters,
+    security: copy.securityServices,
+    general: copy.otherPublicPlaces,
+  };
+  const facilityLabels: Record<FacilityType, string> = {
+    hospital: copy.hospitals,
+    clinic: copy.clinics,
+    public_place: copy.otherPublicPlaces,
+  };
+  const organisationLabels: Record<OrganisationType, string> = {
+    government: copy.government,
+    private: copy.private,
+    public_sector: copy.publicSector,
+    unclassified: copy.unclassified,
+  };
 
   useEffect(() => {
     if (!compact) setFiltersOpen(true);
   }, [compact]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+    try {
+      window.localStorage.setItem("sahayata-atlas-language", language);
+    } catch {
+      // Language still applies for this page when storage is unavailable.
+    }
+    if (locationState === "idle") {
+      setLocationMessage(translate(language, "permissionIntro"));
+    }
+  }, [language, locationState]);
+
+  useEffect(() => {
+    applyAccessibilityPreferences(accessibilityPreferences);
+  }, [accessibilityPreferences]);
+
+  function updateAccessibility(
+    key: keyof AccessibilityPreferences,
+    value: AccessibilityPreferences[keyof AccessibilityPreferences],
+  ) {
+    setAccessibilityPreferences((current) => ({ ...current, [key]: value }));
+  }
 
   const filteredResources = useMemo(() => {
     if (!result) return [];
@@ -130,7 +183,7 @@ export function App() {
     [selectedId, visibleResources],
   );
   const hospitalCount = filteredResources.filter((resource) => resource.facility_type === "hospital").length;
-  const resolvedAt = result ? formatResolvedAt(result.generated_at) : "";
+  const resolvedAt = result ? formatResolvedAt(result.generated_at, language) : "";
   const center: [number, number] | null = result
     ? [result.location.latitude, result.location.longitude]
     : null;
@@ -144,7 +197,7 @@ export function App() {
     setError("");
 
     try {
-      const payload = await searchResources(request, controller.signal);
+      const payload = await searchResources({ ...request, language }, controller.signal);
       setResult(payload);
       setSelectedId(null);
       setShowAll(false);
@@ -153,7 +206,17 @@ export function App() {
       return true;
     } catch (searchError) {
       if (searchError instanceof DOMException && searchError.name === "AbortError") return false;
-      const message = searchError instanceof Error ? searchError.message : "This search could not be completed.";
+      const errorMessages: Record<string, string> = {
+        INVALID_REQUEST: copy.invalidRequest,
+        LOCATION_NOT_FOUND: copy.locationNotFound,
+        LOCATION_OUTSIDE_SERVICE_AREA: copy.outsideMumbai,
+        RATE_LIMITED: copy.rateLimited,
+        UPSTREAM_FAILURE: copy.providerUnavailable,
+        UPSTREAM_TIMEOUT: copy.providerUnavailable,
+      };
+      const message = searchError instanceof ResourceApiError
+        ? errorMessages[searchError.code] ?? copy.defaultSearchError
+        : searchError instanceof Error ? searchError.message : copy.defaultSearchError;
       setError(message);
       window.requestAnimationFrame(() => searchErrorRef.current?.focus());
       return false;
@@ -169,7 +232,7 @@ export function App() {
     event.preventDefault();
     const city = cityInput.trim();
     if (city.length < 2) {
-      setError("Enter a Mumbai locality, such as Andheri, Bandra, or Powai.");
+      setError(copy.invalidLocality);
       window.requestAnimationFrame(() => searchErrorRef.current?.focus());
       return;
     }
@@ -195,11 +258,11 @@ export function App() {
     setLocationIntent(resource ? "directions" : "search");
     if (!navigator.geolocation) {
       setLocationState("error");
-      setLocationMessage("Location is unavailable in this browser. Search a Mumbai locality instead.");
+      setLocationMessage(copy.noBrowserLocation);
       return;
     }
     setLocationState("pending");
-    setLocationMessage("Your browser may ask you to allow location access.");
+    setLocationMessage(copy.browserMayAsk);
 
     try {
       const position = await getBrowserPosition();
@@ -217,13 +280,13 @@ export function App() {
       }
       setUserLocation(nextLocation);
       setLocationState("success");
-      setLocationMessage(searchNearby ? "Location found. Loading nearby resources…" : "Location found. Direction guidance is ready.");
+      setLocationMessage(searchNearby ? copy.locationFoundLoading : copy.locationFoundDirections);
       if (searchNearby) {
-        const loaded = await runSearch({ latitude: nextLocation[0], longitude: nextLocation[1] }, "your location");
+        const loaded = await runSearch({ latitude: nextLocation[0], longitude: nextLocation[1] }, copy.currentLocation);
         setLocationState(loaded ? "success" : "error");
         setLocationMessage(loaded
-          ? "Location found. Nearby resources are ready."
-          : "Location found, but nearby resources could not be loaded. Try the search again.");
+          ? copy.locationReady
+          : copy.locationLoadFailed);
       }
       if (resource) setSelectedId(resource.id);
     } catch (locationError) {
@@ -231,14 +294,14 @@ export function App() {
       if (typeof locationError === "object" && locationError && "code" in locationError) {
         const code = (locationError as GeolocationPositionError).code;
         setLocationMessage(code === 1
-          ? "Location permission was declined. You can still search a Mumbai locality."
+          ? copy.permissionDeclined
           : code === 2
-            ? "Your device could not determine its location. Check location services or search a Mumbai locality."
-            : "Location took too long to resolve. Try again or search a Mumbai locality.");
+            ? copy.deviceLocationFailed
+            : copy.locationTimedOut);
       } else if (locationError instanceof Error && locationError.message === "OUTSIDE_MUMBAI") {
-        setLocationMessage("This region is outside Mumbai and is currently not available. Search a Mumbai locality instead.");
+        setLocationMessage(copy.outsideMumbai);
       } else {
-        setLocationMessage("Location is unavailable. Search a Mumbai locality instead.");
+        setLocationMessage(copy.locationUnavailable);
       }
     }
   }
@@ -283,40 +346,103 @@ export function App() {
     });
   }
 
-  const locationTitle = loading ? `Searching ${requestedLabel}` : result?.location.display_name ?? "Awaiting a locality";
+  const locationTitle = loading
+    ? `${copy.searching} ${requestedLabel}`
+    : result?.location.display_name ?? copy.awaitingLocality;
   const locationMeta = loading
-    ? "Requesting place, hospital, and public listing data"
+    ? copy.requestingData
     : result
-      ? `${visibleResources.length} listings · resolved ${resolvedAt}`
-      : "Mumbai search is ready";
+      ? `${visibleResources.length} · ${translate(language, "resolved", { time: resolvedAt })}`
+      : copy.searchReady;
 
   return (
     <div className="app-shell">
-      <a className="skip-link" href="#main-content">Skip to resource search</a>
+      <a className="skip-link" href="#main-content">{copy.skipLink}</a>
       <div className="national-stripe" aria-hidden="true"><span /><span /><span /></div>
 
       <header className="masthead">
-        <a className="brand" href="/" aria-label="Sahayata Atlas home">
+        <a className="brand" href="/" aria-label={copy.homeLabel}>
           <span className="brand-mark"><BrandMark /></span>
           <span><strong>Sahayata</strong><small>Atlas</small></span>
         </a>
         <div className="masthead-copy">
-          <strong>Mumbai public infrastructure lookup</strong>
-          <span>Preparedness view · on-demand public data</span>
+          <strong>{copy.mastheadTitle}</strong>
+          <span>{copy.mastheadSubtitle}</span>
         </div>
-        <a className="source-link" href="#data-note">How this data works <ArrowDown aria-hidden="true" /></a>
+        <div className="masthead-tools">
+          <label className="language-picker">
+            <Languages aria-hidden="true" />
+            <span className="sr-only">{copy.language}</span>
+            <select
+              aria-label={copy.language}
+              value={language}
+              onChange={(event) => setLanguage(event.target.value as Language)}
+            >
+              {(Object.keys(languageNames) as Language[]).map((languageCode) => (
+                <option key={languageCode} value={languageCode}>{languageNames[languageCode]}</option>
+              ))}
+            </select>
+          </label>
+          <details className="accessibility-menu">
+            <summary><Accessibility aria-hidden="true" /><span>{copy.accessibility}</span></summary>
+            <div className="accessibility-panel">
+              <div className="accessibility-heading">
+                <Accessibility aria-hidden="true" />
+                <div><h2>{copy.accessibilityTitle}</h2><p>{copy.accessibilityIntro}</p></div>
+              </div>
+              <fieldset>
+                <legend>{copy.textSize}</legend>
+                <div className="text-size-options">
+                  {(["default", "large", "largest"] as TextSize[]).map((size) => (
+                    <label key={size}>
+                      <input
+                        type="radio"
+                        name="text-size"
+                        value={size}
+                        checked={accessibilityPreferences.textSize === size}
+                        onChange={() => updateAccessibility("textSize", size)}
+                      />
+                      <span>{copy[size === "default" ? "textDefault" : size === "large" ? "textLarge" : "textLargest"]}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              {([
+                ["highContrast", copy.highContrast],
+                ["reduceMotion", copy.reduceMotion],
+                ["underlineLinks", copy.underlineLinks],
+                ["enhancedFocus", copy.enhancedFocus],
+              ] as Array<[keyof AccessibilityPreferences, string]>).map(([key, label]) => (
+                <label className="accessibility-toggle" key={key}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(accessibilityPreferences[key])}
+                    onChange={(event) => updateAccessibility(key, event.target.checked)}
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+              <button
+                type="button"
+                className="reset-accessibility"
+                onClick={() => setAccessibilityPreferences(defaultAccessibilityPreferences)}
+              ><RotateCcw aria-hidden="true" />{copy.resetSettings}</button>
+            </div>
+          </details>
+          <a className="source-link" href="#data-note">{copy.howDataWorks} <ArrowDown aria-hidden="true" /></a>
+        </div>
       </header>
 
       <main id="main-content">
         <section className="search-command" aria-labelledby="search-title">
           <div className="search-intro">
-            <h1 id="search-title">Find response infrastructure across Mumbai.</h1>
-            <p>Search a Mumbai neighbourhood, street, or landmark to map public resources listed within 10 km.</p>
-            <div className="scope-note"><MapPin aria-hidden="true" /><span>Currently available in the Mumbai region</span></div>
+            <h1 id="search-title">{copy.heroTitle}</h1>
+            <p>{copy.heroBody}</p>
+            <div className="scope-note"><MapPin aria-hidden="true" /><span>{copy.scope}</span></div>
           </div>
 
           <form className="search-form" role="search" noValidate onSubmit={submitCity}>
-            <label htmlFor="city-input">Mumbai locality</label>
+            <label htmlFor="city-input">{copy.localityLabel}</label>
             <div className="search-field">
               <MapPin aria-hidden="true" />
               <input
@@ -324,20 +450,20 @@ export function App() {
                 name="city"
                 type="search"
                 autoComplete="address-level2"
-                placeholder="Try Dadar, Marine Lines, Kalbadevi…"
+                placeholder={copy.placeholder}
                 aria-describedby={error ? "search-error" : undefined}
                 aria-invalid={Boolean(error)}
                 value={cityInput}
                 onChange={(event) => { setCityInput(event.target.value); setError(""); }}
               />
               <button type="submit" disabled={loading}>
-                <span>{loading ? "Searching…" : "Find resources"}</span><ArrowRight aria-hidden="true" />
+                <span>{loading ? copy.searching : copy.findResources}</span><ArrowRight aria-hidden="true" />
               </button>
             </div>
             {error && (
               <div ref={searchErrorRef} id="search-error" className="search-error" role="alert" tabIndex={-1}>
                 <CircleAlert aria-hidden="true" />
-                <span><strong>We couldn’t complete that search.</strong>{error}</span>
+                <span><strong>{copy.searchErrorTitle}</strong>{error}</span>
               </div>
             )}
 
@@ -350,53 +476,53 @@ export function App() {
                 onClick={() => void requestLocation(true)}
               >
                 <LocateFixed aria-hidden="true" />
-                <span>{locationState === "pending" ? "Finding your location…" : userLocation ? "Refresh my location" : "Use my location"}</span>
+                <span>{locationState === "pending" ? copy.findingLocation : userLocation ? copy.refreshLocation : copy.useLocation}</span>
               </button>
               <p id="location-status" aria-live="polite" data-state={locationState}>{locationMessage}</p>
             </div>
 
             <details className="filter-panel" open={!compact || filtersOpen} onToggle={(event) => setFiltersOpen(event.currentTarget.open)}>
               <summary>
-                <span><strong>Refine results</strong><small>Place type, facility, organisation</small></span>
+                <span><strong>{copy.refineResults}</strong><small>{copy.refineHint}</small></span>
                 <ChevronDown aria-hidden="true" />
               </summary>
-              <div className="inventory-controls" aria-label="Resource filters">
+              <div className="inventory-controls" aria-label={copy.resourceFilters}>
                 <label className="query-select" htmlFor="category-filter">
-                  <span>Place type</span>
+                  <span>{copy.placeType}</span>
                   <span className="select-shell">
                     <select id="category-filter" value={category} onChange={(event) => selectCategory(event.target.value as CategoryFilter)}>
-                      <option value="all">All place types</option>
-                      <option value="medical">Medical facilities</option>
-                      <option value="shelter">Emergency shelters</option>
-                      <option value="security">Security services</option>
-                      <option value="general">Other public places</option>
+                      <option value="all">{copy.allPlaceTypes}</option>
+                      <option value="medical">{copy.medicalFacilities}</option>
+                      <option value="shelter">{copy.emergencyShelters}</option>
+                      <option value="security">{copy.securityServices}</option>
+                      <option value="general">{copy.otherPublicPlaces}</option>
                     </select>
                     <ChevronDown aria-hidden="true" />
                   </span>
                 </label>
                 <label className="query-select" htmlFor="facility-filter">
-                  <span>Facility</span>
+                  <span>{copy.facility}</span>
                   <span className="select-shell">
                     <select id="facility-filter" value={facility} onChange={(event) => selectFacility(event.target.value as FacilityFilter)}>
-                      <option value="all">All facilities</option>
-                      <option value="hospital">Hospitals</option>
-                      <option value="clinic">Clinics</option>
+                      <option value="all">{copy.allFacilities}</option>
+                      <option value="hospital">{copy.hospitals}</option>
+                      <option value="clinic">{copy.clinics}</option>
                     </select>
                     <ChevronDown aria-hidden="true" />
                   </span>
                 </label>
                 <label className="query-select" htmlFor="organisation-filter">
-                  <span>Organisation type</span>
+                  <span>{copy.organisationType}</span>
                   <span className="select-shell">
                     <select
                       id="organisation-filter"
                       value={organisation}
                       onChange={(event) => { setOrganisation(event.target.value as OrganisationFilter); setSelectedId(null); setShowAll(false); }}
                     >
-                      <option value="all">All organisation types</option>
-                      <option value="government">Government</option>
-                      <option value="private">Private</option>
-                      <option value="public_sector">Public sector organisation</option>
+                      <option value="all">{copy.allOrganisationTypes}</option>
+                      <option value="government">{copy.government}</option>
+                      <option value="private">{copy.private}</option>
+                      <option value="public_sector">{copy.publicSector}</option>
                     </select>
                     <ChevronDown aria-hidden="true" />
                   </span>
@@ -404,21 +530,21 @@ export function App() {
               </div>
             </details>
 
-            <div className="quick-cities" aria-label="Suggested cities">
-              <span>Quick search</span>
-              {quickCities.map((city) => (
+            <div className="quick-cities" aria-label={copy.suggestedCities}>
+              <span>{copy.quickSearch}</span>
+              {quickPlaces[language].map((place) => (
                 <button
-                  key={city}
+                  key={place.query}
                   type="button"
-                  aria-pressed={result?.location.query_type === "city" && result.location.display_name === city}
-                  onClick={() => searchQuickCity(city)}
-                >{city}</button>
+                  aria-pressed={result?.location.query_type === "city" && result.location.display_name === place.query}
+                  onClick={() => searchQuickCity(place.query)}
+                >{place.label}</button>
               ))}
             </div>
           </form>
         </section>
 
-        <section className="workspace" aria-label="Resource map and results">
+        <section className="workspace" aria-label={copy.workspaceLabel}>
           <div className="map-stage">
             <div className="map-toolbar">
               <div>
@@ -430,7 +556,7 @@ export function App() {
                 className="icon-button"
                 type="button"
                 disabled={!result}
-                aria-label="Recenter map"
+                aria-label={copy.recenterMap}
                 onClick={() => setRecenterSignal((signal) => signal + 1)}
               ><Crosshair aria-hidden="true" /></button>
             </div>
@@ -442,78 +568,88 @@ export function App() {
               userLocation={userLocation}
               onSelect={selectMapResource}
               recenterSignal={recenterSignal}
+              reduceMotion={accessibilityPreferences.reduceMotion}
+              labels={{
+                map: copy.mapLabel,
+                currentLocation: copy.currentLocation,
+                publicListing: copy.publicListing,
+              }}
             />
 
             {!result && (
               <div className={`map-empty${loading ? " loading" : ""}`}>
                 <div className="radar" aria-hidden="true"><span /><span /><span /></div>
-                <h2>{loading ? `Building ${requestedLabel}’s resource picture…` : error ? "We couldn’t build this resource picture." : "Your Mumbai resource picture starts with a locality."}</h2>
+                <h2>{loading
+                  ? translate(language, "buildingPicture", { place: requestedLabel })
+                  : error ? copy.pictureFailed : copy.pictureStart}</h2>
                 <p>{loading
-                  ? "Place resolution usually returns first; detailed public listings can take a little longer."
+                  ? copy.resolutionWait
                   : error
-                    ? "Check the search message, then try a Mumbai neighbourhood, street, or landmark again."
-                    : "Results are requested on demand. No location history is stored by this application."}</p>
+                    ? copy.retryPlace
+                    : copy.noLocationHistory}</p>
               </div>
             )}
 
-            <div className="map-legend" aria-label="Map legend">
-              {userLocation && <span><i className="legend-current" />You</span>}
-              {userLocation && selectedResource && <span><i className="legend-direction" />Orientation</span>}
-              <span><i className="legend-dot medical" />Medical</span>
-              <span><i className="legend-dot shelter" />Shelter</span>
-              <span><i className="legend-dot security" />Security</span>
-              <span><i className="legend-dot general" />General</span>
+            <div className="map-legend" aria-label={copy.mapLegend}>
+              {userLocation && <span><i className="legend-current" />{copy.you}</span>}
+              {userLocation && selectedResource && <span><i className="legend-direction" />{copy.orientation}</span>}
+              <span><i className="legend-dot medical" />{copy.medical}</span>
+              <span><i className="legend-dot shelter" />{copy.shelter}</span>
+              <span><i className="legend-dot security" />{copy.security}</span>
+              <span><i className="legend-dot general" />{copy.general}</span>
             </div>
-            <span className="sr-only" aria-live="polite">{result ? `${visibleResources.length} public listings mapped near ${result.location.display_name}` : "Map ready"}</span>
+            <span className="sr-only" aria-live="polite">{result
+              ? translate(language, "mappedListings", { count: visibleResources.length, place: result.location.display_name })
+              : copy.mapReady}</span>
           </div>
 
           <aside className="resource-ledger" aria-labelledby="ledger-title" aria-busy={loading}>
             <div className="ledger-head">
               <div>
-                <h2 id="ledger-title">Nearby resources</h2>
+                <h2 id="ledger-title">{copy.nearbyResources}</h2>
                 <p aria-live="polite">{result
-                  ? `${visibleResources.length < filteredResources.length ? `Nearest ${visibleResources.length} of ${filteredResources.length}` : `${filteredResources.length} shown · nearest first`} · ${hospitalCount} hospital${hospitalCount === 1 ? "" : "s"}`
-                  : loading ? "Contacting the resource service…" : "Search a Mumbai locality to load resources."}</p>
+                  ? `${visibleResources.length}/${filteredResources.length} · ${hospitalCount} ${copy.hospitals}`
+                  : loading ? copy.contactingService : copy.searchToLoad}</p>
               </div>
-              {result && <button type="button" className="text-button" onClick={clearResults}>Clear search</button>}
+              {result && <button type="button" className="text-button" onClick={clearResults}>{copy.clearSearch}</button>}
             </div>
 
             {result && (
-              <div className="query-summary" aria-label="Resolved location and active scope">
+              <div className="query-summary" aria-label={copy.resolvedScope}>
                 <span>{[result.location.district, result.location.state].filter(Boolean).join(", ") || result.location.display_name}</span>
-                <span>{organisation === "all" ? "All organisations" : organisationLabels[organisation]}</span>
-                <span>Resolved {resolvedAt}</span>
+                <span>{organisation === "all" ? copy.allOrganisations : organisationLabels[organisation]}</span>
+                <span>{translate(language, "resolved", { time: resolvedAt })}</span>
               </div>
             )}
 
-            {loading && result && <div className="refreshing-strip"><span /><span>Updating the resource picture…</span></div>}
+            {loading && result && <div className="refreshing-strip"><span /><span>{copy.updatingPicture}</span></div>}
             {result?.coverage.is_partial && (
-              <div className="coverage-warning" role="status"><CircleAlert aria-hidden="true" /><span><strong>Some sources are delayed.</strong>{result.coverage.warnings.join(" ")}</span></div>
+              <div className="coverage-warning" role="status"><CircleAlert aria-hidden="true" /><span><strong>{copy.delayedTitle}</strong>{language === "en" ? result.coverage.warnings.join(" ") : copy.delayedDetails}</span></div>
             )}
 
             {result && error && (
-              <div className="ledger-error" role="alert"><CircleAlert aria-hidden="true" /><span><strong>New search not loaded.</strong>{error} Your previous Mumbai results remain available.</span></div>
+              <div className="ledger-error" role="alert"><CircleAlert aria-hidden="true" /><span><strong>{copy.newSearchFailed}</strong>{error} {copy.previousRemain}</span></div>
             )}
 
             {loading && !result && (
               <div className="loading-state" aria-live="polite">
                 <div><span /><span /><span /></div>
-                <p>Resolving the location and requesting nearby public listings…</p>
-                <button type="button" className="text-button" onClick={() => abortRef.current?.abort()}>Cancel search</button>
+                <p>{copy.resolving}</p>
+                <button type="button" className="text-button" onClick={() => abortRef.current?.abort()}>{copy.cancelSearch}</button>
               </div>
             )}
 
             {!loading && !result && (
               <div className={`message-state${error ? " error-state" : ""}`}>
                 {error ? <CircleAlert aria-hidden="true" /> : <ListFilter aria-hidden="true" />}
-                <div><strong>{error ? "Resource scan interrupted" : "No resources loaded yet"}</strong><p>{error || "Your nearest public listings will appear here."}</p></div>
+                <div><strong>{error ? copy.scanInterrupted : copy.noResourcesYet}</strong><p>{error || copy.nearestAppear}</p></div>
               </div>
             )}
 
             {result && filteredResources.length === 0 && (
               <div className="message-state">
                 <ListFilter aria-hidden="true" />
-                <div><strong>{result.resources.length ? "No resources match these filters" : "No nearby listings found"}</strong><p>{result.resources.length ? "Adjust the filters to broaden this view." : "Try another Mumbai locality for broader public-data coverage."}</p></div>
+                <div><strong>{result.resources.length ? copy.noFilterMatches : copy.noNearby}</strong><p>{result.resources.length ? copy.adjustFilters : copy.tryAnother}</p></div>
               </div>
             )}
 
@@ -522,8 +658,8 @@ export function App() {
                 {visibleResources.map((resource, index) => {
                   const selected = selectedId === resource.id;
                   const organisationLabel = resource.organisation.type === "unclassified"
-                    ? "Unclassified"
-                    : `${resource.organisation.inferred ? "Inferred: " : "Listed: "}${organisationLabels[resource.organisation.type]}`;
+                    ? copy.unclassified
+                    : `${resource.organisation.inferred ? copy.inferred : copy.listed} ${organisationLabels[resource.organisation.type]}`;
                   return (
                     <li id={`resource-${resource.id}`} key={resource.id} className={selected ? "selected" : undefined}>
                       <button
@@ -532,28 +668,28 @@ export function App() {
                         data-category={resource.category}
                         aria-expanded={selected}
                         aria-controls={`resource-detail-${index}`}
-                        aria-label={`Inspect ${resource.name}, nearest result ${index + 1}`}
+                        aria-label={translate(language, "inspectResult", { name: resource.name, position: index + 1 })}
                         onClick={() => selectResource(resource)}
                       >
                         <span className="node-rank">{String(index + 1).padStart(2, "0")}</span>
                         <span className="node-symbol"><ResourceIcon category={resource.category} /></span>
-                        <span className="node-copy"><strong>{resource.name}</strong><small>{facilityLabels[resource.facility_type]} · {formatDistance(resource.distance_metres)}</small></span>
+                        <span className="node-copy"><strong>{resource.name}</strong><small>{facilityLabels[resource.facility_type]} · {formatDistance(resource.distance_metres, language)}</small></span>
                         <span className="node-status">{organisationLabel}</span>
                         <ChevronRight className="row-arrow" aria-hidden="true" />
                       </button>
 
                       {selected && (
                         <div id={`resource-detail-${index}`} className="node-detail">
-                          <strong>What this result means</strong>
-                          <p>A public {resource.source.name} listing classified as a {categoryLabels[resource.category].toLowerCase()}. Ownership, operating status, capacity, and emergency suitability are not verified.</p>
+                          <strong>{copy.resultMeaning}</strong>
+                          <p>{translate(language, "resultDescription", { source: resource.source.name, category: categoryLabels[resource.category].toLocaleLowerCase(localeNames[language]) })}</p>
                           <div className="detail-facts">
                             <span><Building2 aria-hidden="true" />{resource.organisation.name || organisationLabel}</span>
-                            <a href={resource.source.record_url} target="_blank" rel="noreferrer">View source <ExternalLink aria-hidden="true" /></a>
+                            <a href={resource.source.record_url} target="_blank" rel="noreferrer">{copy.viewSource} <ExternalLink aria-hidden="true" /></a>
                           </div>
                           <div className="direction-actions">
                             {userLocation ? (
                               <a className="directions-link" href={directionsUrl(userLocation, resource)} target="_blank" rel="noreferrer">
-                                <Navigation aria-hidden="true" />Open road directions
+                                <Navigation aria-hidden="true" />{copy.openDirections}
                               </a>
                             ) : (
                               <button
@@ -563,7 +699,7 @@ export function App() {
                                 aria-describedby={`direction-status-${index}`}
                                 onClick={() => void requestLocation(false, resource)}
                               >
-                                <LocateFixed aria-hidden="true" />{locationState === "pending" && locationIntent === "directions" ? "Finding your location…" : "Use my location for directions"}
+                                <LocateFixed aria-hidden="true" />{locationState === "pending" && locationIntent === "directions" ? copy.findingLocation : copy.useLocationDirections}
                               </button>
                             )}
                             <small
@@ -574,7 +710,7 @@ export function App() {
                             >
                               {locationIntent === "directions" && (locationState === "pending" || locationState === "error")
                                 ? locationMessage
-                                : "The ochre map line is straight-line orientation. Google Maps provides the road route."}
+                                : copy.directionNote}
                             </small>
                           </div>
                         </div>
@@ -586,30 +722,30 @@ export function App() {
             )}
 
             {visibleResources.length < filteredResources.length && (
-              <button type="button" className="show-all-button" onClick={() => setShowAll(true)}>Show all {filteredResources.length} results</button>
+              <button type="button" className="show-all-button" onClick={() => setShowAll(true)}>{translate(language, "showAll", { count: filteredResources.length })}</button>
             )}
             {result && (
-              <div className="classification-note"><Info aria-hidden="true" /><span>Organisation labels may be inferred from public names and operator metadata, not verified ownership.</span></div>
+              <div className="classification-note"><Info aria-hidden="true" /><span>{copy.classificationNote}</span></div>
             )}
           </aside>
         </section>
 
         <section id="data-note" className="data-note" aria-labelledby="data-title">
           <div>
-            <h2 id="data-title">Mumbai public data, with its limits left visible.</h2>
-            <p>Sahayata Atlas currently covers the Mumbai region and is a preparedness aid—not an emergency dispatch service. Listings do not confirm that a facility is open, equipped, safe, or available.</p>
+            <h2 id="data-title">{copy.dataTitle}</h2>
+            <p>{copy.dataBody}</p>
           </div>
           <dl>
-            <div><dt>Service region</dt><dd>Mumbai localities and in-region device coordinates</dd></div>
-            <div><dt>Location search</dt><dd>Open-Meteo + OSM Photon/Nominatim · on submit</dd></div>
-            <div><dt>Hospitals & clinics</dt><dd>OpenStreetMap Overpass · on-demand</dd></div>
-            <div><dt>Other public places</dt><dd>Wikipedia GeoSearch · within 10 km</dd></div>
-            <div><dt>Organisation type</dt><dd>Operator metadata and name inference · qualified in every result</dd></div>
+            <div><dt>{copy.serviceRegion}</dt><dd>{copy.serviceRegionValue}</dd></div>
+            <div><dt>{copy.locationSearch}</dt><dd>{copy.locationSearchValue}</dd></div>
+            <div><dt>{copy.hospitalsClinics}</dt><dd>{copy.hospitalsClinicsValue}</dd></div>
+            <div><dt>{copy.publicPlaces}</dt><dd>{copy.publicPlacesValue}</dd></div>
+            <div><dt>{copy.organisationType}</dt><dd>{copy.organisationValue}</dd></div>
           </dl>
         </section>
       </main>
 
-      <footer><span>Sahayata Atlas · Mumbai public-resource interface</span><span>For emergencies in India, call <strong>112</strong>.</span></footer>
+      <footer><span>{copy.footerProduct}</span><span>{copy.emergency} <strong>112</strong>.</span></footer>
     </div>
   );
 }

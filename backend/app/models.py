@@ -84,3 +84,4 @@ class NearbyQuery(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
     radius_km: int = 10
+    language: Literal["en", "hi", "mr"] = "en"
