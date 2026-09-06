@@ -87,11 +87,16 @@ def create_app(resource_service: ResourceService | Any | None = None) -> FastAPI
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(self)"
         response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' "
-            "https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; "
-            "img-src 'self' data: blob: https://*.tile.openstreetmap.org; connect-src 'self'; "
-            "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
-        )
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' https://us-assets.i.posthog.com; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com; "
+    "img-src 'self' data: blob: https://*.tile.openstreetmap.org; "
+    "connect-src 'self' https://us.i.posthog.com; "
+    "frame-ancestors 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'"
+)
         logger.info(
             "request_complete request_id=%s method=%s path=%s status=%s duration_ms=%s",
             request.state.request_id,
